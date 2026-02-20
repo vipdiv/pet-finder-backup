@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum PetStatus {
+  MISSING
+  REGULAR
+  UNKNOWN
+}
+
+enum Species {
+  DOG
+  CAT
+  OTHER
+}
+
+enum TargetType {
+  PET
+  SIGHTING
+  COMMENT
+}
+
+enum VoteTargetType {
+  SIGHTING
+  COMMENT
+}
+
+enum VoteType {
+  UP
+  DOWN
+}
+
+enum GamificationEventType {
+  POST_SIGHTING
+  POST_COMMENT
+  UPVOTE_HELPFUL
+  LINK_SIGHTING_TO_MISSING
+  CONFIRMED_REUNION
+  REPORT_SPAM_OR_ABUSE
+}
+
+enum StewardLevel {
+  VISITOR
+  NEIGHBOR
+  PARK_WATCHER
+  STEWARD
+  BRIDGE_GUARDIAN
+}
+
+enum BadgeType {
+  QUICK_RESPONSE
+  REUNION_HELPER
+  STEADY_NEIGHBOR
+  LOCAL_KNOWLEDGE
+  EARLY_WALKER
+  EVENING_PATROL
+}
+
+model Pet {
+  id              String     @id @default(uuid())
+  status          PetStatus
+  name            String?
+  species         Species
+  description     String?
+  neighborhood    String
+  primaryPhotoUrl String
+  contactInfo     String?
+  hidden          Boolean    @default(false)
+  createdAt       DateTime   @default(now())
+  sightings       Sighting[]
+  comments        Comment[]
+  reunions        Reunion[]
+}
+
+model Sighting {
+  id                String     @id @default(uuid())
+  petId             String?
+  pet               Pet?       @relation(fields: [petId], references: [id])
+  species           Species
+  photoUrl          String
+  locationText      String
+  seenAt            DateTime
+  notes             String?
+  waitMinutes       Int?
+  hidden            Boolean    @default(false)
+  createdAt         DateTime   @default(now())
+  createdByViewerId String
+  comments          Comment[]
+}
+
+model Comment {
+  id                String     @id @default(uuid())
+  petId             String
+  pet               Pet        @relation(fields: [petId], references: [id])
+  sightingId        String?
+  sighting          Sighting?  @relation(fields: [sightingId], references: [id])
+  body              String
+  hidden            Boolean    @default(false)
+  createdAt         DateTime   @default(now())
+  createdByViewerId String
+}
+
+model Report {
+  id                String     @id @default(uuid())
+  targetType        TargetType
+  targetId          String
+  reason            String
+  createdAt         DateTime   @default(now())
+  createdByViewerId String
+}
+
+model Vote {
+  id                String         @id @default(uuid())
+  targetType        VoteTargetType
+  targetId          String
+  voteType          VoteType
+  createdAt         DateTime       @default(now())
+  createdByViewerId String
+
+  @@unique([targetType, targetId, createdByViewerId])
+}
+
+model Reunion {
+  id                  String   @id @default(uuid())
+  petId               String
+  pet                 Pet      @relation(fields: [petId], references: [id])
+  confirmedAt         DateTime
+  confirmedByViewerId String
+  note                String?
+}
+
+model GamificationEvent {
+  id        String                @id @default(uuid())
+  viewerId  String
+  type      GamificationEventType
+  points    Int
+  createdAt DateTime              @default(now())
+}
+
+model ViewerProfile {
+  viewerId     String       @id
+  displayName  String?
+  stewardLevel StewardLevel @default(VISITOR)
+  points       Int          @default(0)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  badges       Badge[]
+}
+
+model Badge {
+  id       String   @id @default(uuid())
+  viewerId String
+  viewer   ViewerProfile @relation(fields: [viewerId], references: [viewerId])
+  type     BadgeType
+  earnedAt DateTime @default(now())
+
+  @@unique([viewerId, type])
+}
